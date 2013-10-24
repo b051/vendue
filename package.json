@@ -1,0 +1,19 @@
+{
+  "name": "report",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.coffee",
+  "scripts": {
+    "start": "coffee app.coffee",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "coffee-script": "~1.6.3",
+    "request": "~2.27.0",
+    "jsontoxml": "0.0.11",
+    "jsdom": "~0.8.7",
+    "iconv-lite": "~0.2.11"
+  }
+}
