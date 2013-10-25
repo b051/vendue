@@ -93,12 +93,12 @@ class Vendue extends EventEmitter
         MULTICARD: 'Y'
       , cb
     
-    logon (res) ->
+    logon (res) =>
       session_id = res.RETCODE[0]
       if session_id > 0
         console.log "Session ID: #{session_id}"
-        check_user session_id, (res) ->
-          callback res.RETCODE[0] is '0'
+        check_user session_id, (res) =>
+          callback.call @, res.RETCODE[0] is '0'
   
   loadChoices: (callback) ->
     @get 'vendue2_nkst/hq/myChoiceCodeHQ.jsp', (body) ->
@@ -160,10 +160,8 @@ fs = require 'fs'
 fs.readFile "accounts.json", (err, content) ->
   accounts = JSON.parse content
   for account in accounts
-    vendue = new Vendue account
-
-    vendue.login (success) ->
+    new Vendue(account).login (success) ->
       if not success
         console.error "login error"
         return
-      vendue.start()
+      @start()
