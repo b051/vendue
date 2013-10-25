@@ -1,4 +1,4 @@
-start vendue
+Start Vendue
 ============
 
 1. install npm from nodejs.org or other places
@@ -13,4 +13,3 @@ start vendue
 	or
 	$ coffee app.coffee
 	```
-
