@@ -156,15 +156,14 @@ class Vendue extends EventEmitter
     _loop()
 
 
-vendue = new Vendue
-  user_id: 578800
-  password: '123'
-  register_word: '08ACB5CC227A5882'
+fs = require 'fs'
+fs.readFile "accounts.json", (err, content) ->
+  accounts = JSON.parse content
+  for account in accounts
+    vendue = new Vendue account
 
-# you can add other vendues here
-
-vendue.login (success) ->
-  if not success
-    console.error "login error"
-    return
-  vendue.start()
+    vendue.login (success) ->
+      if not success
+        console.error "login error"
+        return
+      vendue.start()
