@@ -22,7 +22,7 @@ class Vendue extends EventEmitter
     @referer = null
     request = request.defaults
       jar: request.jar()
-      proxy: 'http://10.0.1.8:8888'
+      # proxy: 'http://10.0.1.8:8888'
       encoding: null
     headers =
       'User-Agent': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0)'
