@@ -170,36 +170,3 @@ vendue.login (success) ->
   checkloop = ->
     check checkloop
   checkloop()
-
-# vendue.quotationsAdd choices, (body) ->
-#   if not body.LI
-#     console.log "closed"
-#     return
-#   
-#   max_count = 0
-#   emitter = new EventEmitter()
-#   bidding = []
-#   for thread in body.LI[0].HQ
-#     count = Number(thread.CT[0])
-#     max_count = Math.max(count, max_count)
-#     if count is 59
-#       id = thread.ID[0]
-#       for choice in choices
-#         if choice.id is id
-#           found = yes
-#           bidding.push choice
-#           vendue.bid choice, (msg) ->
-#             bidding.pop choice
-#             emitter.emit 'pop'
-#             console.log msg
-#           break
-#   if bidding.length is 0
-#     if max_count < 45
-#       console.log "max count = #{max_count}, wait 60 seconds."
-#       setTimeout callback, 60000
-#     else
-#       callback()
-#   else
-#     emitter.on 'pop', ->
-#       if bidding.length is 0
-#         callback()
