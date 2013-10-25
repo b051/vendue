@@ -7,7 +7,7 @@ iconv = require 'iconv-lite'
 Buffer::gbk = ->
   iconv.decode(@, 'gbk')
 
-class Vendue
+class Vendue extends EventEmitter
   
   @tradeweb: 'http://124.127.102.8:16925/tradeweb/'
   @vendue: 'http://124.127.102.18:16910/vendue/'
@@ -18,6 +18,23 @@ class Vendue
     @password = options.password
     @register_word = options.register_word
     @jar = request.jar()
+    @bucket = []
+    lock = 0
+    
+    @.on 'bid', =>
+      return if lock
+      choice = @bucket.pop()
+      return if not choice
+      
+      lock = 1
+      @._bid choice, (msg) =>
+        # todo: test msg
+        lock = 0
+        if @bucket.length
+          console.log "wait 10 seonds after successful bid..."
+          setTimeout =>
+            @.emit 'bid'
+          , 10000
     
     post = (path, req, json, headers, callback) =>
       console.log "requesting #{path}...\n"
@@ -91,7 +108,11 @@ class Vendue
         choices.push id: match[1], commodity_id: match[2], weight: match[3], count: match[4]
       callback? choices
   
-  bid: (choice, cb) ->
+  bid: (choice) ->
+    @bucket.push(choice)
+    @.emit 'bid'
+  
+  _bid: (choice, cb) ->
     console.log "bidding #{choice.id}, weight: #{choice.weight} ..."
     @get "vendue2_nkst/submit/order.jsp?partitionId=#{Vendue.partition_id}&code=#{choice.id}&commodityId=#{choice.commodity_id}&price=20400.0"
     , (body) =>
@@ -110,59 +131,9 @@ class Vendue
         message = /if\(true\){\s*alert\('(.*?)'\)/.exec body
         console.log "#{choice.id}: #{message[1]}"
         cb?(message[1])
-
-
-class Bidding extends EventEmitter
-
-  constructor: (fn) ->
-    @bucket = []
-    lock = 0
-    
-    @.on 'bid', =>
-      return if lock
-      choice = @bucket.pop()
-      return if not choice
-      
-      lock = 1
-      fn choice, (msg) =>
-          # todo: test msg
-        lock = 0
-        console.log "wait 10 seonds after successful bid..."
-        setTimeout =>
-          @.emit 'bid'
-        , 10000
   
-  bid: (choice) ->
-    @bucket.push(choice)
-    @.emit 'bid'
-
-vendue = new Vendue
-  user_id: 578800
-  password: '123'
-  register_word: '08ACB5CC227A5882'
-
-# you can add other vendues here
-
-# 
-# bid = (obj, cb) ->
-#   console.log "bidding #{obj}..."
-#   setTimeout ->
-#     console.log "#{obj} bid!"
-#     cb?("done")
-#   , 1000
-# bidding.bid("x")
-# bidding.bid("y")
-
-bid = new Bidding(vendue.bid).bid
-
-vendue.login (success) ->
-  if not success
-    console.error "login error"
-  else
-    console.log "logged in"
-  
-  check = (next) ->
-    vendue.loadChoices (choices) ->
+  check: (next) ->
+    @loadChoices (choices) =>
       console.log "choices: [#{choices.join(', ')}]"
       if not choices.length
         console.log "no choices, wait 60 seconds..."
@@ -172,14 +143,28 @@ vendue.login (success) ->
         for choice in choices
           maxCount = Math.max(choice.count, maxCount)
           if choice.count is 59
-            bid choice
+            @bid choice
         if maxCount < 45
           console.log "max count = #{maxCount}, wait 60 seconds..."
           setTimeout next, 60000
         else
           next()
   
-  console.log 'checking...'
-  checkloop = ->
-    check checkloop
-  checkloop()
+  start: ->
+    _loop = =>
+      @check _loop
+    _loop()
+
+
+vendue = new Vendue
+  user_id: 578800
+  password: '123'
+  register_word: '08ACB5CC227A5882'
+
+# you can add other vendues here
+
+vendue.login (success) ->
+  if not success
+    console.error "login error"
+    return
+  vendue.start()
