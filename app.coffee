@@ -67,7 +67,6 @@ class Vendue
       , cb
     
     logon = (cb) =>
-      console.log @user_id
       @tradeweb 'httpXmlServlet', 'logon',
         USER_ID: @user_id
         PASSWORD: @password
@@ -117,29 +116,44 @@ class Bidding extends EventEmitter
 
   constructor: (fn) ->
     @bucket = []
-    @.on 'bid', (choice) =>
-      @bucket.push choice
+    lock = 0
+    
+    @.on 'bid', =>
+      return if lock
+      choice = @bucket.pop()
+      return if not choice
+      
+      lock = 1
       fn choice, (msg) =>
-        console.log msg
-        @bucket.pop()
-        if @bucket.length is 0
-          @.emit 'complete'
+          # todo: test msg
+        lock = 0
+        console.log "wait 10 seonds after successful bid..."
+        setTimeout =>
+          @.emit 'bid'
+        , 10000
   
   bid: (choice) ->
-    @.emit 'bid', choice
-  
-  whenDone: (fn) ->
-    if @bucket.length
-      @.once 'complete', fn
-    else
-      fn()
+    @bucket.push(choice)
+    @.emit 'bid'
 
 vendue = new Vendue
   user_id: 578800
   password: '123'
   register_word: '08ACB5CC227A5882'
 
-bidding = new Bidding(vendue.bid)
+# you can add other vendues here
+
+# 
+# bid = (obj, cb) ->
+#   console.log "bidding #{obj}..."
+#   setTimeout ->
+#     console.log "#{obj} bid!"
+#     cb?("done")
+#   , 1000
+# bidding.bid("x")
+# bidding.bid("y")
+
+bid = new Bidding(vendue.bid).bid
 
 vendue.login (success) ->
   if not success
@@ -148,23 +162,22 @@ vendue.login (success) ->
     console.log "logged in"
   
   check = (next) ->
-    bidding.whenDone ->
-      vendue.loadChoices (choices) ->
-        console.log "choices: [#{choices.join(', ')}]"
-        if not choices.length
-          console.log "no choices, wait 60 seconds..."
+    vendue.loadChoices (choices) ->
+      console.log "choices: [#{choices.join(', ')}]"
+      if not choices.length
+        console.log "no choices, wait 60 seconds..."
+        setTimeout next, 60000
+      else
+        maxCount = 0
+        for choice in choices
+          maxCount = Math.max(choice.count, maxCount)
+          if choice.count is 59
+            bid choice
+        if maxCount < 45
+          console.log "max count = #{maxCount}, wait 60 seconds..."
           setTimeout next, 60000
         else
-          maxCount = 0
-          for choice in choices
-            maxCount = Math.max(choice.count, maxCount)
-            if choice.count is 59
-              bidding.bid choice
-          if maxCount < 45
-            console.log "max count = #{maxCount}, wait 60 seconds..."
-            setTimeout next, 60000
-          else
-            next()
+          next()
   
   console.log 'checking...'
   checkloop = ->
