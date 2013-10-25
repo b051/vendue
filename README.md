@@ -7,8 +7,10 @@ start vendue
 
 	```bash
 
+	$ npm i coffee-script -g
 	$ npm i
 	$ npm start
-
+	or
+	$ coffee app.coffee
 	```
 
