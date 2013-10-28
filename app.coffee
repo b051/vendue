@@ -41,21 +41,6 @@ class Vendue extends EventEmitter
       options['headers'] = h
       request options, fn
       @bidding = {}
-    # 
-    # @bucket = []
-    # @bidding = {}
-    # lock = 0
-    # 
-    # @.on 'bid', =>
- #      return if lock
- #      choice = @bucket.pop()
- #      return if not choice
- #      
- #      lock = 1
- #      @._bid choice, (msg) =>
- #        lock = 0
- #        if @bucket.length
- #          @.emit 'bid'
   
   @reqXML: (req, json) ->
     '<?xml version="1.0" encoding="gb2312"?>' + jsontoxml 
