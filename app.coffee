@@ -127,7 +127,7 @@ class Vendue extends EventEmitter
         choices.push id: match[1], commodity_id: match[2], weight: match[3], count: Number(match[4])
       callback? choices
   
-  touchOrderCommand: (choice) ->
+  preloadBiddingPage: (choice) ->
     orderPage = "vendue2_nkst/submit/order.jsp?partitionId=#{Vendue.partition_id}&code=#{choice.id}&commodityId=#{choice.commodity_id}&price=20400.0"
     @referer = null
     
@@ -184,7 +184,7 @@ class Vendue extends EventEmitter
         @bidding = {}
         for choice in choices
           if not _choice or _choice.id isnt choice.id
-            @touchOrderCommand choice
+            @preloadBiddingPage choice
       
       @.on 'bid', reloadBidding
       reloadBidding null
