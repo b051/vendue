@@ -12,7 +12,7 @@ WaitSeconds = 5
 class Vendue extends EventEmitter
   
   @tradeweb: 'http://124.127.102.8:16925/tradeweb/'
-  @vendue: 'http://124.127.102.18:16910/vendue/'
+  @vendue: 'http://124.127.102.17:16911/vendue/'
   @partition_id: 2
   
   constructor: (options) ->
@@ -20,8 +20,9 @@ class Vendue extends EventEmitter
     @password = options.password
     @register_word = options.register_word
     @referer = null
+    @jar = request.jar()
     request = request.defaults
-      jar: request.jar()
+      jar: @jar
       # proxy: 'http://10.0.1.8:8888'
       encoding: null
     headers =
@@ -52,7 +53,6 @@ class Vendue extends EventEmitter
       lock = 1
       @._bid choice, (msg) =>
         lock = 0
-        delete @bidding[choice.id]
         if @bucket.length
           @.emit 'bid'
   
@@ -87,27 +87,9 @@ class Vendue extends EventEmitter
   
   get: (path, callback) =>
     url = "#{Vendue.vendue}#{path}"
-    @referer = url
     @request url: url, (err, res, body) ->
       callback? body.gbk()
-  
-  quotationsAdd: (choices, callback) ->
-    body = jsontoxml [
-      name: 'REQ'
-      attrs: name: 'aqt'
-      children:
-        P: Vendue.partition_id
-        CNT: 350
-        ID: (choice.id for choice in choices).join(',')
-      ]
-    @request
-      method: 'POST'
-      url: "#{Vendue.vendue}servlet/HTTPXmlServlet?reqName='quotationsAdd'"
-      body: body
-    , (err, res, body) ->
-      body = xml2js.parseString body.gbk(), (err, result) ->
-        result = result.MEBS.REP[0]
-        callback? result
+    @referer = url
   
   login: (callback) ->
     check_user = (session_id, cb) =>
@@ -117,21 +99,23 @@ class Vendue extends EventEmitter
         MODULE_ID: 2
       , cb
     
-    logon = (cb) =>
-      @tradeweb 'httpXmlServlet', 'logon',
-        USER_ID: @user_id
-        PASSWORD: @password
-        REGISTER_WORD: @register_word
-        VERSIONINFO: '3.0.0.16'
-        AUTOLOGIN: 'N'
-        MULTICARD: 'Y'
-      , cb
+    check_user2 = (logon_ip, session_id, cb) =>
+      @get "vendue2_nkst/submit/checkuser.jsp?ausessionid=#{session_id}&userid=#{@user_id}&logonip=#{logon_ip}", cb
     
-    logon (res) =>
+    @tradeweb 'httpXmlServlet', 'logon',
+      USER_ID: @user_id
+      PASSWORD: @password
+      REGISTER_WORD: @register_word
+      VERSIONINFO: '3.0.0.16'
+      AUTOLOGIN: 'N'
+      MULTICARD: 'Y'
+    , (res) =>
       session_id = res.RETCODE[0]
       if session_id > 0
         console.log "Session ID: #{session_id}"
+        logon_ip = res.LOGONIP[0]
         check_user session_id, (res) =>
+          check_user2 logon_ip, session_id
           callback.call @, res.RETCODE[0] is '0'
   
   loadChoices: (callback) ->
@@ -144,7 +128,7 @@ class Vendue extends EventEmitter
   
   bid: (choice) ->
     return if @bidding[choice.id]
-    @bidding[choice.id] = ""
+    @bidding[choice.id] = true
     @bucket.push(choice)
     @.emit 'bid'
   
@@ -167,11 +151,10 @@ class Vendue extends EventEmitter
         "#{m[3]}=20400.0&" +
         "#{m[4]}=#{choice.weight}"
       
-      @request url: "vendue2_nkst/submit/images/k1.gif", ->
-        @get orderCommand, (body) ->
-          message = /if\(true\){\s*alert\('(.*?)'\)/.exec body
-          console.log "#{choice.id}: #{message[1]}"
-          cb?(message[1])
+      @get orderCommand, (body) ->
+        message = /if\(true\){\s*alert\('(.*?)'\)/.exec body
+        console.log "#{choice.commodity_id}: #{message[1]} #{new Date()}"
+        cb?(message[1])
   
   check: (next) ->
     @loadChoices (choices) =>
@@ -205,12 +188,9 @@ fs.readFile "accounts.json", (err, content) ->
   for account in accounts
     continue if not account.enabled
     console.log "starting account #{account.user_id}..."
+    
     new Vendue(account).login (success) ->
-      if not success
+      if success
+        @.start()
+      else
         console.error "login error"
-        return
-      @loadChoices (choices) =>
-        for choice in choices
-          if choice.commodity_id is 'CD201310280304'
-            @._bid choice
-      # @start()
