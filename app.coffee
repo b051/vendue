@@ -63,12 +63,12 @@ class Vendue extends EventEmitter
         attrs: name: req
         children: json
         ]
-    
+  
   @resXML: (body, callback) ->
     xml2js.parseString body.gbk(), (err, result) ->
       result = result.GNNT.REP[0].RESULT[0]
       callback? result
-    
+  
   post: (path, req, json, callback) =>
     @request
       method: 'POST'
@@ -76,7 +76,7 @@ class Vendue extends EventEmitter
       body: Vendue.reqXML(req, json)
     , (err, res, body) ->
       Vendue.resXML body, callback
-    
+  
   tradeweb: (path, req, json, callback) ->
     @request
       method: 'POST'
@@ -84,7 +84,7 @@ class Vendue extends EventEmitter
       body: Vendue.reqXML(req, json)
     , (err, res, body) ->
       Vendue.resXML body, callback
-    
+  
   get: (path, callback) =>
     url = "#{Vendue.vendue}#{path}"
     @referer = url
@@ -108,7 +108,7 @@ class Vendue extends EventEmitter
       body = xml2js.parseString body.gbk(), (err, result) ->
         result = result.MEBS.REP[0]
         callback? result
-
+  
   login: (callback) ->
     check_user = (session_id, cb) =>
       @post 'login_syn.jsp', 'check_user',
@@ -159,6 +159,7 @@ class Vendue extends EventEmitter
       "[\\s\\S]*name=\"(\\S+)\" value=\"20400.0\"\\s*/>" +
       "[\\s\\S]*name=\"(\\S+)\" value=\"\"\\s*/>"
       m = new RegExp(exp).exec(body)
+      return if not m
       
       orderCommand = "servlet/XMLServlet?reqName=order&partitionId=#{Vendue.partition_id}&commodityId=#{choice.commodity_id}&" +
         "#{m[1]}=#{choice.id}&" +
@@ -208,8 +209,8 @@ fs.readFile "accounts.json", (err, content) ->
       if not success
         console.error "login error"
         return
-      # @loadChoices (choices) =>
-      #   for choice in choices
-      #     if choice.commodity_id is 'CD201310250199'
-      #       @._bid choice
-      @start()
+      @loadChoices (choices) =>
+        for choice in choices
+          if choice.commodity_id is 'CD201310280304'
+            @._bid choice
+      # @start()
