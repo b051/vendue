@@ -40,21 +40,22 @@ class Vendue extends EventEmitter
         h['Referer'] = @referer
       options['headers'] = h
       request options, fn
-    
-    @bucket = []
-    @bidding = {}
-    lock = 0
-    
-    @.on 'bid', =>
-      return if lock
-      choice = @bucket.pop()
-      return if not choice
-      
-      lock = 1
-      @._bid choice, (msg) =>
-        lock = 0
-        if @bucket.length
-          @.emit 'bid'
+      @bidding = {}
+    # 
+    # @bucket = []
+    # @bidding = {}
+    # lock = 0
+    # 
+    # @.on 'bid', =>
+ #      return if lock
+ #      choice = @bucket.pop()
+ #      return if not choice
+ #      
+ #      lock = 1
+ #      @._bid choice, (msg) =>
+ #        lock = 0
+ #        if @bucket.length
+ #          @.emit 'bid'
   
   @reqXML: (req, json) ->
     '<?xml version="1.0" encoding="gb2312"?>' + jsontoxml 
@@ -126,14 +127,7 @@ class Vendue extends EventEmitter
         choices.push id: match[1], commodity_id: match[2], weight: match[3], count: Number(match[4])
       callback? choices
   
-  bid: (choice) ->
-    return if @bidding[choice.id]
-    @bidding[choice.id] = true
-    @bucket.push(choice)
-    @.emit 'bid'
-  
-  _bid: (choice, cb) ->
-    console.log "bidding #{choice.id}, weight: #{choice.weight} ..."
+  touchOrderCommand: (choice) ->
     orderPage = "vendue2_nkst/submit/order.jsp?partitionId=#{Vendue.partition_id}&code=#{choice.id}&commodityId=#{choice.commodity_id}&price=20400.0"
     @referer = null
     
@@ -144,17 +138,25 @@ class Vendue extends EventEmitter
       "[\\s\\S]*name=\"(\\S+)\" value=\"\"\\s*/>"
       m = new RegExp(exp).exec(body)
       return if not m
-      
       orderCommand = "servlet/XMLServlet?reqName=order&partitionId=#{Vendue.partition_id}&commodityId=#{choice.commodity_id}&" +
         "#{m[1]}=#{choice.id}&" +
         "#{m[2]}=#{choice.commodity_id}&" +
         "#{m[3]}=20400.0&" +
         "#{m[4]}=#{choice.weight}"
-      
-      @get orderCommand, (body) ->
+    
+      @bidding[choice.commodity_id] = orderCommand
+  
+  startBidding: (choice) ->
+    @.on 'edge', (_choice) =>
+      return if _choice.id isnt choice.id
+      url = @bidding[choice.commodity_id]
+      return if not url
+      @get url, (body) =>
         message = /if\(true\){\s*alert\('(.*?)'\)/.exec body
         console.log "#{choice.commodity_id}: #{message[1]} #{new Date()}"
-        cb?(message[1])
+        @.emit "bid", choice
+    
+    console.log "bidding #{choice.commodity_id}, weight: #{choice.weight} ..."
   
   check: (next) ->
     @loadChoices (choices) =>
@@ -168,7 +170,7 @@ class Vendue extends EventEmitter
           maxCount = Math.max(choice.count, maxCount)
           avgCount += choice.count
           if choice.count is 59
-            @bid choice
+            @.emit 'edge', choice
         if maxCount < 45
           avgCount = avgCount / choices.length
           console.log "max count = #{maxCount}, average = #{avgCount}, wait #{WaitSeconds} seconds..."
@@ -177,6 +179,18 @@ class Vendue extends EventEmitter
           next()
   
   start: ->
+    @loadChoices (choices) =>
+      reloadBidding = (_choice) =>
+        @bidding = {}
+        for choice in choices
+          if not _choice or _choice.id isnt choice.id
+            @touchOrderCommand choice
+      
+      @.on 'bid', reloadBidding
+      reloadBidding null
+      
+      choices.forEach (choice) =>
+        @startBidding choice
     _loop = =>
       @check _loop
     _loop()
