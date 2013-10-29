@@ -1,7 +1,7 @@
 Vendue = require './vendue'
 fs = require 'fs'
 
-run = ->
+exports.run = run = ->
   fs.readFile "accounts.json", (err, content) ->
     accounts = JSON.parse content
     for account in accounts
@@ -14,7 +14,7 @@ run = ->
         else
           console.error "[#{@user_id}] login error"
 
-bid = (commodity_id) ->
+exports.bid = bid = (commodity_id) ->
   fs.readFile "accounts.json", (err, content) ->
     accounts = JSON.parse content
     for account in accounts
@@ -27,6 +27,4 @@ bid = (commodity_id) ->
               @preloadBiddingPage choice, ->
                 @.emit 'edge', choice
 
-
-# bid "CD20131029000"
 run()
