@@ -21,7 +21,7 @@ class Vendue extends EventEmitter
     @register_word = options.register_word
     @referer = null
     @jar = request.jar()
-    request = request.defaults
+    _request = request.defaults
       jar: @jar
       # proxy: 'http://10.0.1.8:8888'
       encoding: null
@@ -39,7 +39,7 @@ class Vendue extends EventEmitter
       if @referer
         h['Referer'] = @referer
       options['headers'] = h
-      request options, fn
+      _request options, fn
       @bidding = {}
   
   @reqXML: (req, json) ->
