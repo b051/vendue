@@ -20,11 +20,11 @@ class Vendue extends EventEmitter
     @password = options.password
     @register_word = options.register_word
     @jar = request.jar()
+    @bidding = {}
     @request = request.defaults
       jar: @jar
       # proxy: 'http://10.0.1.8:8888'
       encoding: null
-    @bidding = {}
   
   @reqXML: (req, json) ->
     '<?xml version="1.0" encoding="gb2312"?>' + jsontoxml 
@@ -135,7 +135,6 @@ class Vendue extends EventEmitter
         maxCount = 0
         for choice in choices
           maxCount = Math.max(choice.count, maxCount)
-          avgCount += choice.count
           if choice.count is 59
             @.emit 'edge', choice
         if maxCount < 45
