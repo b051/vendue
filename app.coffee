@@ -138,15 +138,15 @@ class Vendue extends EventEmitter
       return if not url
       @get url, (body) =>
         message = /if\(true\){\s*alert\('(.*?)'\)/.exec body
-        console.log "#{choice.commodity_id}: #{message[1]} #{new Date()}"
+        console.log "[#{@user_id}] #{choice.commodity_id}: #{message[1]} #{new Date()}"
         @.emit "bid", choice
     
-    console.log "bidding #{choice.commodity_id}, weight: #{choice.weight} ..."
+    console.log "[#{@user_id}] bidding #{choice.commodity_id}, weight: #{choice.weight} ..."
   
   check: (next) ->
     @loadChoices (choices) =>
       if not choices.length
-        console.log "no choices, wait #{WaitSeconds} seconds..."
+        console.log "[#{@user_id}] no choices, wait #{WaitSeconds} seconds..."
         setTimeout next, WaitSeconds * 1000
       else
         maxCount = 0
@@ -158,7 +158,7 @@ class Vendue extends EventEmitter
             @.emit 'edge', choice
         if maxCount < 45
           avgCount = avgCount / choices.length
-          console.log "max count = #{maxCount}, average = #{avgCount}, wait #{WaitSeconds} seconds..."
+          console.log "[#{@user_id}] max count = #{maxCount}, average = #{avgCount}, wait #{WaitSeconds} seconds..."
           setTimeout next, WaitSeconds * 1000
         else
           next()
@@ -186,10 +186,10 @@ fs.readFile "accounts.json", (err, content) ->
   accounts = JSON.parse content
   for account in accounts
     continue if not account.enabled
-    console.log "starting account #{account.user_id}..."
     
     new Vendue(account).login (success) ->
+      console.log "starting account #{@user_id}..."
       if success
         @.start()
       else
-        console.error "login error"
+        console.error "[#{@user_id}] login error"
