@@ -27,4 +27,6 @@ bid = (commodity_id) ->
               @preloadBiddingPage choice, ->
                 @.emit 'edge', choice
 
+
+# bid "CD20131029000"
 run()
