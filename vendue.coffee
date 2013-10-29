@@ -19,28 +19,12 @@ class Vendue extends EventEmitter
     @user_id = options.user_id
     @password = options.password
     @register_word = options.register_word
-    @referer = null
     @jar = request.jar()
-    _request = request.defaults
+    @request = request.defaults
       jar: @jar
       # proxy: 'http://10.0.1.8:8888'
       encoding: null
-    headers =
-      'User-Agent': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0)'
-      'Accept': "*/*"
-      'Accept-Language': 'zh-cn'
-      'Accept-Encoding': 'gzip, deflate'
-      'x-requeted-with': 'XMLHttpRequest'
-    
-    @request = (options, fn) ->
-      h = options.headers || {}
-      for k, v of headers
-        h[k] = v
-      if @referer
-        h['Referer'] = @referer
-      options['headers'] = h
-      _request options, fn
-      @bidding = {}
+    @bidding = {}
   
   @reqXML: (req, json) ->
     '<?xml version="1.0" encoding="gb2312"?>' + jsontoxml 
@@ -75,7 +59,6 @@ class Vendue extends EventEmitter
     url = "#{Vendue.vendue}#{path}"
     @request url: url, (err, res, body) ->
       callback? body.gbk()
-    @referer = url
   
   login: (callback) ->
     check_user = (session_id, cb) =>
@@ -113,7 +96,6 @@ class Vendue extends EventEmitter
   
   preloadBiddingPage: (choice, cb) ->
     orderPage = "vendue2_nkst/submit/order.jsp?partitionId=#{Vendue.partition_id}&code=#{choice.id}&commodityId=#{choice.commodity_id}&price=20400.0"
-    @referer = null
     
     @get orderPage, (body) =>
       exp = "name=\"(\\S+)\" value=\"#{choice.id}\"\\s*/>" +
@@ -135,7 +117,8 @@ class Vendue extends EventEmitter
     @.on 'edge', (_choice) =>
       return if _choice.id isnt choice.id
       url = @bidding[choice.commodity_id]
-      return if not url
+      if not url
+        return
       @get url, (body) =>
         message = /if\(true\){\s*alert\('(.*?)'\)/.exec body
         console.log "[#{@user_id}] #{choice.commodity_id}: #{message[1]} #{new Date()}"
@@ -150,29 +133,27 @@ class Vendue extends EventEmitter
         setTimeout next, WaitSeconds * 1000
       else
         maxCount = 0
-        avgCount = 0
         for choice in choices
           maxCount = Math.max(choice.count, maxCount)
           avgCount += choice.count
           if choice.count is 59
             @.emit 'edge', choice
         if maxCount < 45
-          avgCount = avgCount / choices.length
-          console.log "[#{@user_id}] max count = #{maxCount}, average = #{avgCount}, wait #{WaitSeconds} seconds..."
+          console.log "[#{@user_id}] #{choices.length} choices (max #{maxCount} < 45), wait #{WaitSeconds} seconds..."
           setTimeout next, WaitSeconds * 1000
         else
           next()
   
   start: ->
     @loadChoices (choices) =>
-      reloadBidding = (_choice) =>
+      reloadBidding = (except) =>
         @bidding = {}
         for choice in choices
-          if not _choice or _choice.id isnt choice.id
+          if not except or except.id isnt choice.id
             @preloadBiddingPage choice
       
       @.on 'bid', reloadBidding
-      reloadBidding null
+      reloadBidding()
       
       choices.forEach (choice) =>
         @startBidding choice
