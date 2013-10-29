@@ -21,7 +21,7 @@ class Vendue extends EventEmitter
     @register_word = options.register_word
     @referer = null
     @jar = request.jar()
-    request = request.defaults
+    _request = request.defaults
       jar: @jar
       # proxy: 'http://10.0.1.8:8888'
       encoding: null
@@ -32,14 +32,14 @@ class Vendue extends EventEmitter
       'Accept-Encoding': 'gzip, deflate'
       'x-requeted-with': 'XMLHttpRequest'
     
-    @request = (options, fn) ->
+    @request = (options, fn) =>
       h = options.headers || {}
       for k, v of headers
         h[k] = v
       if @referer
         h['Referer'] = @referer
       options['headers'] = h
-      request options, fn
+      _request options, fn
     
     @bucket = []
     @bidding = {}
