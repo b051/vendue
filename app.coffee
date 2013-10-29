@@ -1,7 +1,7 @@
 Vendue = require './vendue'
 fs = require 'fs'
 
-accounts = (fn) ->
+forEachAccount = (fn) ->
   fs.readFile "accounts.json", (err, content) ->
     accounts = JSON.parse content
     for account in accounts
@@ -10,7 +10,7 @@ accounts = (fn) ->
 
 
 exports.run = run = ->
-  accounts (account) ->
+  forEachAccount (account) ->
     new Vendue(account).login (success) ->
       console.log "starting account #{@user_id}..."
       if success
@@ -19,7 +19,7 @@ exports.run = run = ->
         console.error "[#{@user_id}] login error"
 
 exports.bid = bid = (commodity_id) ->
-  accounts (account) ->
+  forEachAccount (account) ->
     new Vendue(account).login (success) ->
       @loadChoices (choices) =>
         for choice in choices
